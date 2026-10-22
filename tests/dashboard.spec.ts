@@ -33,3 +33,25 @@ test('base operacional: demandas únicas, status, período e erro sem perder dad
  await page.getByRole('button',{name:'Limpar',exact:true}).click();await page.getByLabel('De',{exact:true}).fill('2026-10-02');await expect(page.locator('.kpi').first()).toContainText('2 h');await expect(page.locator('.ranking tbody tr')).toHaveCount(1);
  await page.locator('input[type=file]').setInputFiles({name:'invalido.xlsx',mimeType:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',buffer:Buffer.from('not a workbook')});await expect(page.getByRole('alert')).toBeVisible();await expect(page.locator('.kpi').first()).toContainText('2 h');
 });
+
+test('QuiStock com a planilha fornecida: importação sem dados fictícios',async({page})=>{
+ const file=process.env.QUISTOCK_TEST_XLSX;
+ test.skip(!file,'Defina QUISTOCK_TEST_XLSX para validar uma cópia local da planilha institucional. O arquivo não é distribuído no repositório.');
+ const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
+ await page.goto('/');await page.locator('input[type=file]').setInputFiles(file!);
+ await expect(page.getByText('QuiStock reconhecido',{exact:false})).toHaveCount(2);
+ await expect(page.locator('.mapping-grid').first().getByText('Unidade dos valores numéricos')).toBeVisible();
+ await page.getByRole('button',{name:'Construir dashboard'}).click();
+ await expect(page.getByRole('dialog')).not.toBeVisible();
+ await expect(page.locator('.kpi').first()).toContainText('64,5 h');await expect(page.locator('.kpi').first()).toContainText('parcial');
+ await expect(page.locator('.kpi').nth(1).locator('strong')).toHaveText('29');
+ await expect(page.locator('.ranking tbody tr')).toHaveCount(11);
+ await expect(page.getByRole('status')).toContainText('15 demandas');await expect(page.getByRole('status')).toContainText('1 demanda(s) sem responsável');
+ await page.getByRole('button',{name:'Dashboard · 1º ano',exact:true}).click();
+ await expect(page.locator('.ranking tbody tr')).toHaveCount(5);await expect(page.locator('.kpi').first()).toContainText('64,5 h');
+ await page.getByLabel('Status',{exact:true}).selectOption('Concluída');await expect(page.locator('.kpi').first()).toContainText('18,5 h');await expect(page.locator('.kpi').nth(1).locator('strong')).toHaveText('14');
+ await page.getByRole('button',{name:'Dashboard · 2º ano',exact:true}).click();await expect(page.locator('.ranking tbody tr')).toHaveCount(6);
+ await expect(page.locator('.kpi').first().locator('strong')).toHaveText('0 h');await expect(page.locator('.kpi').nth(1).locator('strong')).toHaveText('0');
+ expect(errors).toEqual([]);
+ await page.setViewportSize({width:390,height:844});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+});

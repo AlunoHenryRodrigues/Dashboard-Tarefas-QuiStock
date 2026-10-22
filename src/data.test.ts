@@ -70,3 +70,42 @@ describe('resumos, turmas e demanda compartilhada',()=>{
   const m=metrics(d.records);expect(m.hours).toBeNull();expect(m.average).toBeNull();expect(m.perDemand).toBeNull();expect(m.people[1].hours).toBe(0);
  });
 });
+
+describe('perfil QuiStock: tabelas lado a lado e caixas de responsáveis',()=>{
+ const analysis=(name:string,names:string[])=>sheet(name,[
+  ['Situação','Quantidade',null,'Nome','Concluída','Em Andamento','Total',null,'Matéria','Horas Trabalhadas'],
+  ...names.map((n,i)=>['Concluída',99,null,n,null,null,null,null,'BD',900+i]),
+  [],[null,null,null,'Integrante','Selecionado'],[null,null,null,'Concluída','Total']
+ ]);
+ it('não confunde horas por matéria com pessoa nem quantidade geral com total individual',()=>{
+  const a=analysis('Análises - 1º',['Teste A','Teste B']);const m=guessMapping(a,'1ano');
+  expect(m.name).toBe(3);expect(m.hours).toBe(-1);expect(m.demands).toBe(6);expect(m.endRow).toBe(3);
+ });
+ it('combina cadastro com checkboxes, reconhece minutos, mantém horas parciais e turma vazia',async()=>{
+  const {suggestMappings}=await import('./data');
+  const a=analysis('Análises - 1º',['Teste A','Teste B']);
+  const b=analysis('Análises - 2º ',['Teste C']);
+  const t=sheet('Tarefas - 1º',[
+   ['Descrição','Horas Trabalhadas','Data de Conclusão','Status','Teste A','Teste B'],
+   ['Compartilhada','1h','01/10/2026','Concluída',true,true],
+   ['Só A','30 minutos',null,'Em Andamento',true,false],
+   ['Ainda sem horas',null,null,'Não Iniciada',false,true],
+   ['Sem responsável',2,null,'Não Iniciada',false,false],
+   [null,null,null,null,false,false]
+  ]);
+  const u=sheet('Tarefas  - 2º',[
+   ['Descrição','Horas Trabalhadas','Data de Conclusão','Status','Teste C'],
+   [null,null,null,null,false]
+  ]);
+  const ss=[a,b,t,u];const maps=suggestMappings(ss);expect(maps.map(m=>m.mode)).toEqual(['matrix','matrix']);
+  const d=parseSheets(ss,maps,'teste.xlsx');const m=metrics(d.records);
+  expect(d.sheets).toHaveLength(4);expect(m.people).toHaveLength(3);expect(m.demands).toBe(4);
+  expect(m.hours).toBe(3.5);expect(m.partial).toBe(true);expect(m.missingHours).toBe(1);expect(m.unassigned).toBe(1);
+  expect(m.people.find(p=>p.name==='Teste A')?.hours).toBe(1);
+  expect(m.people.find(p=>p.name==='Teste B')?.hours).toBe(.5);
+  const zero=metrics(d.records.filter(r=>r.year==='2ano'));expect(zero.hours).toBe(0);expect(zero.demands).toBe(0);expect(zero.people).toHaveLength(1);
+  expect(zero.unique).toBe(true);expect(zero.perDemand).toBeNull();
+  const done=metrics(d.records.filter(r=>r.status==='Concluída'));expect(done.hours).toBe(1);expect(done.demands).toBe(1);expect(done.partial).toBe(false);
+  expect(m.people.some(p=>p.name==='Integrante'||p.name==='Concluída'||p.name==='Sem responsável')).toBe(false);
+ });
+});

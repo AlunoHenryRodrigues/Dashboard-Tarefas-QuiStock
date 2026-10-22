@@ -47,6 +47,31 @@ Os dois primeiros comandos devem retornar `True`. Abra no navegador o endereço 
 
 Os registros ficam na memória da aba do navegador e são descartados ao recarregar/fechar. Não há upload para servidor, armazenamento persistente ou sincronização automática. A data exibida é a **data da importação**, não a data de alteração do documento no SharePoint. Arquivos inválidos não substituem o dashboard anterior.
 
+## Perfil reconhecido do QuiStock.xlsx
+
+O importador reconhece as abas `Análises - 1º` e `Análises - 2º ` (incluindo espaços no nome) e suas abas correspondentes `Tarefas - 1º` e `Tarefas  - 2º`.
+
+- Nas análises, o cadastro é o bloco **F10:L15** (1º ano) e **F10:L16** (2º ano): “Nome”, situações e “Total”. A leitura termina no fim desse bloco; o seletor “Integrante” da linha 23 e painéis auxiliares não são pessoas.
+- A coluna **V / Horas Trabalhadas** pertence à tabela **por matéria**, não à tabela por integrante. Ela é deliberadamente ignorada para calcular horas pessoais. A coluna D / Quantidade pertence ao resumo por situação e também não é usada como demanda individual.
+- Nas tarefas, o cabeçalho fica na **linha 6**: A / Descrição, F / Horas Trabalhadas, D / Data de Conclusão, I / Status e as colunas de responsáveis J em diante. Cada descrição preenchida é uma demanda; células vazias e linhas de modelo não são demandas.
+- As caixas de responsáveis são booleanas: somente as marcadas atribuem a demanda ao integrante. As horas de uma tarefa compartilhada são divididas igualmente entre os responsáveis. Cada responsável recebe uma participação e a demanda única é contada uma vez.
+- O cadastro das análises é preservado mesmo sem tarefas: integrantes da turma vazia aparecem com zero horas registradas e zero demandas. Fórmulas sem resultado salvo não são presumidas como zero: as contagens são reconstruídas a partir das tarefas, cuja existência e atribuições são verificáveis.
+- A tabela de pessoas e as caixas são conferidas entre si. Se houver divergência entre totais salvos de análises e as linhas de tarefas, é exibido um aviso e as contagens operacionais são usadas, mantendo os filtros consistentes.
+- Textos como `1h` e `30 minutos` são reconhecidos, além dos demais formatos de duração. Uma célula de horas vazia não vira zero. **Somente neste perfil operacional verificado**, subtotais de horas conhecidas são mostrados com aviso explícito de **parcial** e contagem de demandas sem horas. Pessoas com tarefas, mas nenhuma hora conhecida, continuam com “Sem dados”.
+- Demandas sem responsável entram no total da turma e são sinalizadas, mas não criam uma pessoa fictícia no ranking. Horas conhecidas sem responsável, se existirem em futuras versões, entram no total e não no gráfico de pessoas; a diferença fica indicada no aviso de atribuição.
+- O período usa **Data de Conclusão**, nunca Prazo como se fosse data de trabalho. Registros sem conclusão são excluídos ao aplicar um período.
+
+A planilha fornecida pelo usuário foi usada para validação local, sem ser adicionada ao repositório ou ao build. O site continua exigindo importação manual: não há arquivo institucional embutido.
+
+Para repetir o teste com uma cópia local (PowerShell):
+
+```powershell
+$env:QUISTOCK_TEST_XLSX = "C:\caminho\QuiStock.xlsx"
+npm run test:e2e
+```
+
+Sem essa variável, somente esse teste específico é pulado; os demais testes usam dados sintéticos.
+
 ## Cálculos e limites
 
 - Resumo por integrante: soma horas e contagens das linhas de cada pessoa. Contagens são **participações individuais**, pois não é possível inferir demandas únicas a partir de totais por pessoa. Confira se nomes repetidos representam parcelas distintas, e não duplicação do mesmo resumo.
@@ -55,7 +80,7 @@ Os registros ficam na memória da aba do navegador e são descartados ao recarre
 - Na visão geral de bases exclusivamente operacionais, o total é a quantidade de IDs/linhas únicos, com namespace de aba e turma. Demandas equivalentes entre turmas não são deduplicadas por inferência. Na combinação de bases agregadas e operacionais, o indicador é explicitamente participações.
 - Normalização de nomes: maiúsculas/minúsculas, acentos e espaços. Turmas diferentes permanecem separadas. Homônimos na mesma turma precisam ser diferenciados na fonte, por exemplo com nome completo; não há tentativa de inferir identidades.
 - Totais, subtotais, média e soma identificáveis na coluna de integrante são ignorados. Confira a amostra e não inclua rodapés com outros rótulos na base.
-- Ausência é `null`; zero é um valor válido. Totais e médias com parcelas ausentes ficam “Sem dados”, em vez de apresentar soma parcial como completa. Gráficos mostram somente parcelas conhecidas. Avisos ficam em “Origem dos dados e metodologia de cálculo”.
+- Ausência é `null`; zero é um valor válido. No modo genérico, totais e médias com parcelas ausentes ficam “Sem dados”. O perfil QuiStock usa subtotais registrados e identifica explicitamente os resultados parciais, conforme descrito acima. Gráficos mostram somente parcelas conhecidas. Avisos ficam em “Origem dos dados e metodologia de cálculo”.
 - Fórmulas: lê o resultado calculado salvo no Excel. O navegador não recalcula fórmulas; se não houver resultado em cache, recalcule e salve no Excel antes da importação.
 - Empates aparecem nos destaques e compartilham posição no ranking. O ranking inclui todos os integrantes válidos identificados, inclusive zero horas/demandas.
 - Filtros, inclusive a pesquisa por nome, afetam indicadores, gráficos e ranking. Filtros de período/status são exibidos somente para registros operacionais com esses campos. Ao aplicá-los, registros sem a respectiva informação são excluídos; as médias usam os integrantes restantes na seleção, não um cadastro externo ausente do arquivo.
@@ -68,7 +93,7 @@ Link de referência:
 
 https://institutogerminare-my.sharepoint.com/:x:/g/personal/nathalia_20260222_institutojef_org_br/IQCImp76PNjiSKd6B3eYupG2AZHD3QzTC68HcBN23Dyu-DA?e=Zuoykt
 
-Durante o desenvolvimento, a requisição ao domínio retornou **403 do proxy de rede**, antes de acessar o documento. Isso não comprova se o compartilhamento é público ou privado. Não foi possível analisar os nomes reais das abas, cabeçalhos, fórmulas ou indicadores institucionais. **Nenhuma aba ou coluna real foi usada ou presumida**; elas serão selecionadas no importador. Não houve alteração do Excel original.
+A requisição ao link SharePoint retornou **403 do proxy de rede**, antes de acessar o documento. Isso não comprova se o compartilhamento é público ou privado. Posteriormente, o usuário forneceu `QuiStock.xlsx`, permitindo analisar as abas, tabelas, fórmulas e campos reais e implementar o perfil descrito acima. O arquivo institucional não foi publicado nem incluído no projeto. Não houve alteração do Excel original.
 
 Microsoft Graph é uma via viável em princípio, mas não foi habilitada ou testada com esse documento. Um link compartilhado não equivale a uma API pública nem garante download com CORS. Para sincronizar será necessário:
 
