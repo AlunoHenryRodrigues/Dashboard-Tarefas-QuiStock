@@ -197,3 +197,12 @@ function parseMatrix(sheets:Sheet[],m:Mapping):{records:RecordRow[];warnings:str
  if(dated)warnings.push(`${tasks.name}: o período e a evolução usam exclusivamente “Data de Conclusão”; prazo não é data de trabalho. Demandas sem conclusão saem do filtro de período.`);
  return {records,warnings};
 }
+
+/** Fixed two-page viewer: source pairing is automatic and cannot be edited by visitors. */
+export function parseDashboardWorkbook(sheets:Sheet[],source:string):Dataset {
+ const mappings=suggestMappings(sheets);
+ if(mappings.length!==2||mappings.some(m=>m.mode!=='matrix')) {
+  throw new Error('A planilha precisa conter as abas de análises e tarefas do 1º e 2º ano no formato QuiStock.');
+ }
+ return parseSheets(sheets,mappings,source);
+}
