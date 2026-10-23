@@ -53,32 +53,35 @@ No desenvolvimento, a fonte é a cópia local do Excel. A data exibida é a data
 
 Uma integração automática futura com Microsoft Graph depende de registro de aplicação, permissões e consentimento da instituição. Credenciais precisam ficar no servidor, nunca no frontend. A interface não depende da origem dos dados: `src/data.ts` fornece o contrato `Dataset`.
 
-## Publicar
+## Publicar no GitHub Pages
 
 ```powershell
-npm run build
-npm run preview
+npm run deploy:pages
 ```
 
-O build lê o `QuiStock.xlsx` presente na máquina que compila e gera o site na pasta **`dist`**, com os dados calculados. Para publicar essa versão sem enviar a planilha ao GitHub, faça o build local e publique `dist` no Netlify ou outro host estático. Os visitantes verão os resultados da cópia usada nesse build. Para atualizar o site publicado, gere e publique novamente `dist` com a cópia mais recente.
+O comando exige uma cópia da planilha em `dados/QuiStock.xlsx` (ou `QuiStock.xlsx` ao lado de `package.json`), gera o site e publica a pasta compilada `site/` na branch `codex/quistock-dashboard`, configurada como origem do GitHub Pages deste repositório. O arquivo Excel original não é enviado ao GitHub. É necessário ter acesso de escrita ao repositório no GitHub e executar o comando dentro da pasta clonada, não em uma pasta ZIP.
 
-Vercel, Netlify e GitHub Pages podem hospedar o resultado. Em builds remotos, é necessário fornecer a planilha à máquina de build; ela não está no repositório. O site publica os nomes e indicadores exibidos, e o arquivo Excel completo permanece fora dos assets públicos.
+Endereço público: `https://alunohenryrodrigues.github.io/Dashboard-Tarefas-QuiStock/`.
+
+Quando a planilha do SharePoint mudar, baixe uma cópia atualizada, substitua `dados/QuiStock.xlsx` no projeto e execute `npm run deploy:pages` outra vez. A tela local de desenvolvimento recarrega ao substituir o arquivo, mas o site público só muda depois da nova publicação. O GitHub Pages pode levar alguns minutos para exibir os novos dados. Não há sincronização direta com o SharePoint.
+
+O site público exibe os nomes e indicadores calculados, e o arquivo Excel completo permanece fora dos assets públicos.
 
 URLs diretas:
 
-- `https://SEU-DOMINIO/?turma=1ano`
-- `https://SEU-DOMINIO/?turma=2ano`
+- `https://alunohenryrodrigues.github.io/Dashboard-Tarefas-QuiStock/?turma=1ano`
+- `https://alunohenryrodrigues.github.io/Dashboard-Tarefas-QuiStock/?turma=2ano`
 
 Sem parâmetro, abre o 1º ano. Não há página de visão geral combinando as turmas. O site usa base relativa e funciona sob o caminho de um repositório no GitHub Pages.
 
 ## Link no Excel
 
-Após publicar, selecione uma célula com o texto **Visualizar Dashboard**, use **Inserir → Link** e cole a URL pública, com `?turma=1ano` ou `?turma=2ano`.
+No Excel, selecione uma célula, escreva **Visualizar Dashboard**, use **Inserir → Link** e cole a URL pública com `?turma=1ano` ou `?turma=2ano`. O Excel na web costuma abrir links externos em uma nova aba; o comportamento final depende do navegador.
 
 Alternativa no Excel em português:
 
 ```text
-=HIPERLINK("https://SEU-DOMINIO/?turma=1ano";"Visualizar Dashboard")
+=HIPERLINK("https://alunohenryrodrigues.github.io/Dashboard-Tarefas-QuiStock/?turma=1ano";"Visualizar Dashboard")
 ```
 
 A abertura em nova aba depende do Excel/navegador. A planilha original não é modificada pelo dashboard.
